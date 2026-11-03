@@ -1,6 +1,6 @@
 # Roadmap
 
-Work planned after v0.1. Estimates are rough. Total: about 27 hours.
+Work planned after v0.1. Estimates are rough. Total: about 28.5 hours.
 
 ## Features
 
