@@ -26,21 +26,31 @@ pip install -e .
 ## Run
 
 ```bash
-disk-tree                  # current directory, depth 3
+disk-tree                  # current directory, 3 levels deep
 disk-tree /var/log         # a specific folder
 disk-tree --depth 1 ~      # only the top level of your home folder
 disk-tree --progress /     # print a running file count to stderr while scanning
+disk-tree --help           # all options
 ```
 
-Example output:
+`--depth` (`-d`) only limits what is printed: folder sizes always include everything
+below them. `--depth 0` prints just the total.
+
+Example output (`disk-tree --depth 2 projects`, on a made-up folder):
 
 ```
-examples/sample  1.2 MiB
-├── photos  1.0 MiB
-│   ├── 2024  800.0 KiB
-│   └── 2025  224.0 KiB
-├── notes  150.0 KiB
-└── todo.txt  12.0 B
+projects  5.9 MiB
+├── photo-app  4.1 MiB
+│   ├── node_modules  3.2 MiB
+│   ├── build  878.9 KiB
+│   └── src  23.4 KiB
+├── game  1.7 MiB
+│   ├── assets  1.7 MiB
+│   └── src  14.6 KiB
+├── notes  4.1 KiB
+│   ├── todo.md  2.9 KiB
+│   └── ideas.md  1.2 KiB
+└── README.md  512 B
 ```
 
 Sizes are apparent file sizes (bytes in each file), summed per folder, using 1024-based
@@ -48,6 +58,8 @@ units. Symlinks are not followed. Folders that can't be read are counted as 0 by
 and marked `[denied]`.
 
 ## Test
+
+With the virtualenv from the install step active:
 
 ```bash
 pip install pytest
