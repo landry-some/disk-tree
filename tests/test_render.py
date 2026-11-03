@@ -46,3 +46,30 @@ def test_render_marks_denied_folders():
 
 def test_render_single_node():
     assert render(Node("file.txt", 12)) == "file.txt  12 B"
+
+
+def deep_tree():
+    return Node("top", 3, is_dir=True, children=[
+        Node("l1", 3, is_dir=True, children=[
+            Node("l2", 3, is_dir=True, children=[Node("l3.txt", 3)]),
+        ]),
+    ])
+
+
+@pytest.mark.parametrize(
+    "max_depth, names",
+    [
+        (0, ["top"]),
+        (1, ["top", "l1"]),
+        (2, ["top", "l1", "l2"]),
+        (3, ["top", "l1", "l2", "l3.txt"]),
+        (None, ["top", "l1", "l2", "l3.txt"]),
+    ],
+)
+def test_render_respects_max_depth(max_depth, names):
+    lines = render(deep_tree(), max_depth).splitlines()
+    assert [line.lstrip("│├└─ ").split("  ")[0] for line in lines] == names
+
+
+def test_depth_limit_keeps_full_sizes():
+    assert render(deep_tree(), 1).splitlines()[1] == "└── l1  3 B"
