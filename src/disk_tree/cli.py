@@ -1,5 +1,6 @@
 import argparse
 import sys
+from typing import TextIO
 
 from disk_tree import __version__
 from disk_tree.render import render
@@ -13,6 +14,27 @@ def non_negative_int(text: str) -> int:
     return value
 
 
+class Progress:
+    """Running file count, redrawn in place on one line."""
+
+    def __init__(self, stream: TextIO, every: int = 500):
+        self.stream = stream
+        self.every = every
+        self.count = 0
+
+    def tick(self) -> None:
+        self.count += 1
+        if self.count % self.every == 0:
+            self._write("")
+
+    def done(self) -> None:
+        self._write("\n")
+
+    def _write(self, end: str) -> None:
+        self.stream.write(f"\rscanned {self.count} files{end}")
+        self.stream.flush()
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="disk-tree",
@@ -23,17 +45,24 @@ def build_parser() -> argparse.ArgumentParser:
         "-d", "--depth", type=non_negative_int, default=3,
         help="levels below PATH to show; sizes always include everything (default: 3)",
     )
+    parser.add_argument(
+        "--progress", action="store_true",
+        help="show a running file count on stderr while scanning",
+    )
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    progress = Progress(sys.stderr) if args.progress else None
     try:
-        root = scan(args.path)
+        root = scan(args.path, on_file=progress.tick if progress else None)
     except OSError as e:
         print(f"disk-tree: {args.path}: {e.strerror}", file=sys.stderr)
         return 1
+    if progress:
+        progress.done()
     sort_by_size(root)
     print(render(root, args.depth))
     return 0

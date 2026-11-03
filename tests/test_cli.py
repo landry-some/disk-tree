@@ -44,3 +44,28 @@ def test_missing_path_reports_error(tmp_path, capsys):
     missing = tmp_path / "nope"
     assert main([str(missing)]) == 1
     assert capsys.readouterr().err == f"disk-tree: {missing}: No such file or directory\n"
+
+
+def test_progress_reports_file_count_on_stderr(make_tree, capsys):
+    main(["--progress", str(make_tree({"a": 1, "b/c": 1, "b/d": 1}))])
+    out = capsys.readouterr()
+    assert out.err == "\rscanned 3 files\n"
+    assert "scanned" not in out.out
+
+
+def test_no_progress_output_by_default(make_tree, capsys):
+    main([str(make_tree({"a": 1}))])
+    assert capsys.readouterr().err == ""
+
+
+def test_progress_redraws_every_n_files():
+    import io
+
+    from disk_tree.cli import Progress
+
+    stream = io.StringIO()
+    progress = Progress(stream, every=2)
+    for _ in range(5):
+        progress.tick()
+    progress.done()
+    assert stream.getvalue() == "\rscanned 2 files\rscanned 4 files\rscanned 5 files\n"
