@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from disk_tree.scan import scan
+from disk_tree.scan import scan, sort_by_size
 
 
 def child(node, name):
@@ -68,3 +68,23 @@ def test_unreadable_folder_is_marked_denied(make_tree):
     assert child(root, "locked").denied
     assert child(root, "locked").size == 0
     assert root.size == 3
+
+
+def test_sort_by_size_orders_largest_first_at_every_level(make_tree):
+    root = scan(str(make_tree({
+        "small.txt": 1,
+        "big/a.bin": 5,
+        "big/b.bin": 50,
+        "mid.txt": 20,
+    })))
+
+    sort_by_size(root)
+
+    assert [c.name for c in root.children] == ["big", "mid.txt", "small.txt"]
+    assert [c.name for c in child(root, "big").children] == ["b.bin", "a.bin"]
+
+
+def test_sort_by_size_breaks_ties_by_name(make_tree):
+    root = scan(str(make_tree({"c": 7, "a": 7, "b": 7})))
+    sort_by_size(root)
+    assert [c.name for c in root.children] == ["a", "b", "c"]

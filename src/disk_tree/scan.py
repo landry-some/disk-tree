@@ -44,3 +44,10 @@ def _scan_dir(path: str, name: str, on_file: Callable[[], None] | None) -> Node:
         node.children.append(child)
         node.size += child.size
     return node
+
+
+def sort_by_size(node: Node) -> None:
+    """Order every folder's children largest first, ties broken by name."""
+    node.children.sort(key=lambda c: (-c.size, c.name))
+    for child in node.children:
+        sort_by_size(child)
