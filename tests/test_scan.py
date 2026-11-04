@@ -99,3 +99,22 @@ def test_prune_hides_small_entries_but_keeps_sizes(make_tree):
     assert [c.name for c in child(root, "big").children] == ["a.bin"]
     assert root.size == 108
     assert child(root, "big").size == 105
+
+
+def test_hard_linked_file_is_counted_once(make_tree):
+    root_path = make_tree({"a/data.bin": 1000, "other.txt": 7})
+    os.link(root_path / "a/data.bin", root_path / "b-link.bin")
+
+    root = scan(str(root_path))
+
+    assert root.size == 1007
+    sizes = sorted([child(child(root, "a"), "data.bin").size, child(root, "b-link.bin").size])
+    assert sizes == [0, 1000]
+
+
+def test_hard_links_in_the_same_folder_are_counted_once(make_tree):
+    root_path = make_tree({"x.bin": 500})
+    os.link(root_path / "x.bin", root_path / "y.bin")
+    os.link(root_path / "x.bin", root_path / "z.bin")
+
+    assert scan(str(root_path)).size == 500

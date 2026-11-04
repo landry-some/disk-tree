@@ -59,7 +59,8 @@ projects  5.9 MiB
 ```
 
 Sizes are apparent file sizes (bytes in each file), summed per folder, using 1024-based
-units. Symlinks are not followed. Folders that can't be read are counted as 0 bytes
+units. Symlinks are not followed. A file with several hard links is counted once, at
+the first link found; its other links show as 0 bytes. Folders that can't be read are counted as 0 bytes
 and marked `[denied]`.
 
 ## Test

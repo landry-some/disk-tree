@@ -14,14 +14,20 @@ class Node:
 
 
 def scan(path: str, on_file: Callable[[], None] | None = None) -> Node:
-    """Build a size tree for path. Symlinks are counted by their own size, not followed."""
+    """Build a size tree for path.
+
+    Symlinks are counted by their own size, not followed. A file with several hard
+    links is counted once, at the first link found; the others show as 0 bytes.
+    """
     st = os.lstat(path)
     if not stat.S_ISDIR(st.st_mode):
         return Node(path, st.st_size)
-    return _scan_dir(path, path, on_file)
+    return _scan_dir(path, path, on_file, set())
 
 
-def _scan_dir(path: str, name: str, on_file: Callable[[], None] | None) -> Node:
+def _scan_dir(
+    path: str, name: str, on_file: Callable[[], None] | None, seen: set[tuple[int, int]]
+) -> Node:
     node = Node(name, is_dir=True)
     try:
         with os.scandir(path) as it:
@@ -32,12 +38,18 @@ def _scan_dir(path: str, name: str, on_file: Callable[[], None] | None) -> Node:
 
     for entry in entries:
         if entry.is_dir(follow_symlinks=False):
-            child = _scan_dir(entry.path, entry.name, on_file)
+            child = _scan_dir(entry.path, entry.name, on_file, seen)
         else:
             try:
-                size = entry.stat(follow_symlinks=False).st_size
+                st = entry.stat(follow_symlinks=False)
             except OSError:
                 size = 0
+            else:
+                size = st.st_size
+                if st.st_nlink > 1:
+                    if (st.st_dev, st.st_ino) in seen:
+                        size = 0
+                    seen.add((st.st_dev, st.st_ino))
             child = Node(entry.name, size)
             if on_file:
                 on_file()

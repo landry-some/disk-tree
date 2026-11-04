@@ -15,7 +15,7 @@ Work planned after v0.1. Estimates are rough. Total: about 28.5 hours.
 
 ## Bugs and edge cases
 
-- [ ] Count hard-linked files once (1.5h)
+- [x] Count hard-linked files once (1.5h)
 - [ ] Handle names with newlines or invalid UTF-8 in output (1h)
 - [ ] Clean exit and partial results on Ctrl-C (1h)
 
