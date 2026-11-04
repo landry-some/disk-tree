@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from disk_tree.scan import prune, scan, sort_by_size
+from disk_tree.scan import ScanInterrupted, prune, scan, sort_by_size
 
 
 def child(node, name):
@@ -118,3 +118,38 @@ def test_hard_links_in_the_same_folder_are_counted_once(make_tree):
     os.link(root_path / "x.bin", root_path / "z.bin")
 
     assert scan(str(root_path)).size == 500
+
+
+def interrupt_after(n):
+    calls = []
+
+    def on_file():
+        calls.append(1)
+        if len(calls) == n:
+            raise KeyboardInterrupt
+
+    return on_file
+
+
+def total(node):
+    return node.size if not node.is_dir else sum(total(c) for c in node.children)
+
+
+def test_ctrl_c_raises_with_partial_tree(make_tree):
+    path = str(make_tree({f"d{i}/f{j}.bin": 10 for i in range(3) for j in range(3)}))
+
+    with pytest.raises(ScanInterrupted) as exc:
+        scan(path, on_file=interrupt_after(5))
+
+    root = exc.value.node
+    assert root.name == path
+    assert root.size == total(root) == 40
+    assert all(c.size == total(c) for c in root.children)
+
+
+def test_ctrl_c_before_any_file_gives_empty_root(make_tree):
+    path = str(make_tree({"a.bin": 10}))
+    with pytest.raises(ScanInterrupted) as exc:
+        scan(path, on_file=interrupt_after(1))
+    assert exc.value.node.size == 0
+    assert exc.value.node.children == []

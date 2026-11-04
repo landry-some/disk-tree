@@ -144,3 +144,30 @@ def test_unknown_format_is_rejected(capsys):
     with pytest.raises(SystemExit) as exc:
         main(["--format", "xml"])
     assert exc.value.code == 2
+
+
+def test_ctrl_c_prints_partial_results(make_tree, capsys, monkeypatch):
+    from disk_tree import cli
+    from disk_tree.scan import Node, ScanInterrupted
+
+    def fake_scan(path, on_file=None):
+        raise ScanInterrupted(Node(path, 5, is_dir=True, children=[Node("a.txt", 5)]))
+
+    monkeypatch.setattr(cli, "scan", fake_scan)
+
+    assert main(["some/dir"]) == 130
+    out = capsys.readouterr()
+    assert out.out.splitlines() == ["some/dir  5 B", "└── a.txt  5 B"]
+    assert out.err == "disk-tree: interrupted, showing partial results\n"
+
+
+def test_ctrl_c_before_scan_starts_exits_quietly(capsys, monkeypatch):
+    from disk_tree import cli
+
+    def fake_scan(path, on_file=None):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "scan", fake_scan)
+
+    assert main(["x"]) == 130
+    assert capsys.readouterr().out == ""

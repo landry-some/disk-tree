@@ -13,11 +13,20 @@ class Node:
     children: list["Node"] = field(default_factory=list)
 
 
+class ScanInterrupted(Exception):
+    """Raised on Ctrl-C during a scan; node holds the tree scanned so far."""
+
+    def __init__(self, node: Node):
+        super().__init__("scan interrupted")
+        self.node = node
+
+
 def scan(path: str, on_file: Callable[[], None] | None = None) -> Node:
     """Build a size tree for path.
 
     Symlinks are counted by their own size, not followed. A file with several hard
     links is counted once, at the first link found; the others show as 0 bytes.
+    Ctrl-C raises ScanInterrupted with the partial tree, sizes summed so far.
     """
     st = os.lstat(path)
     if not stat.S_ISDIR(st.st_mode):
@@ -37,25 +46,40 @@ def _scan_dir(
         return node
 
     for entry in entries:
-        if entry.is_dir(follow_symlinks=False):
-            child = _scan_dir(entry.path, entry.name, on_file, seen)
-        else:
-            try:
-                st = entry.stat(follow_symlinks=False)
-            except OSError:
-                size = 0
-            else:
-                size = st.st_size
-                if st.st_nlink > 1:
-                    if (st.st_dev, st.st_ino) in seen:
-                        size = 0
-                    seen.add((st.st_dev, st.st_ino))
-            child = Node(entry.name, size)
-            if on_file:
-                on_file()
-        node.children.append(child)
-        node.size += child.size
+        try:
+            child = _scan_entry(entry, on_file, seen)
+        except KeyboardInterrupt:
+            raise ScanInterrupted(node) from None
+        except ScanInterrupted as e:
+            _add_child(node, e.node)
+            raise ScanInterrupted(node) from None
+        _add_child(node, child)
     return node
+
+
+def _scan_entry(
+    entry: os.DirEntry, on_file: Callable[[], None] | None, seen: set[tuple[int, int]]
+) -> Node:
+    if entry.is_dir(follow_symlinks=False):
+        return _scan_dir(entry.path, entry.name, on_file, seen)
+    try:
+        st = entry.stat(follow_symlinks=False)
+    except OSError:
+        size = 0
+    else:
+        size = st.st_size
+        if st.st_nlink > 1:
+            if (st.st_dev, st.st_ino) in seen:
+                size = 0
+            seen.add((st.st_dev, st.st_ino))
+    if on_file:
+        on_file()
+    return Node(entry.name, size)
+
+
+def _add_child(node: Node, child: Node) -> None:
+    node.children.append(child)
+    node.size += child.size
 
 
 def sort_by_size(node: Node) -> None:

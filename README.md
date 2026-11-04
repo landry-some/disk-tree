@@ -48,6 +48,9 @@ with `name`, `size` in bytes, `is_dir`, `denied` when a folder couldn't be read,
 parents before children). `--depth` and `--min-size` apply to every format; in JSON, a
 folder below the depth limit has an empty `children` list.
 
+Pressing Ctrl-C during a scan stops it and prints what was scanned so far (sizes cover
+only that part), with a note on stderr and exit status 130.
+
 Example output (`disk-tree --depth 2 projects`, on a made-up folder):
 
 ```

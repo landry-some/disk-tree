@@ -5,7 +5,7 @@ from typing import TextIO
 
 from disk_tree import __version__
 from disk_tree.render import render, render_csv, render_json
-from disk_tree.scan import prune, scan, sort_by_size
+from disk_tree.scan import ScanInterrupted, prune, scan, sort_by_size
 
 
 def non_negative_int(text: str) -> int:
@@ -80,18 +80,25 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     progress = Progress(sys.stderr) if args.progress else None
+    status = 0
     try:
         root = scan(args.path, on_file=progress.tick if progress else None)
     except OSError as e:
         print(f"disk-tree: {args.path}: {e.strerror}", file=sys.stderr)
         return 1
+    except ScanInterrupted as e:
+        root, status = e.node, 130
+    except KeyboardInterrupt:
+        return 130
     if progress:
         progress.done()
+    if status:
+        print("disk-tree: interrupted, showing partial results", file=sys.stderr)
     sort_by_size(root)
     if args.min_size:
         prune(root, args.min_size)
     print(RENDERERS[args.format](root, args.depth))
-    return 0
+    return status
 
 
 if __name__ == "__main__":
