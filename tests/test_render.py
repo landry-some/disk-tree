@@ -1,6 +1,6 @@
 import pytest
 
-from disk_tree.render import format_size, render
+from disk_tree.render import format_size, render, render_csv, render_json
 from disk_tree.scan import Node
 
 
@@ -73,3 +73,52 @@ def test_render_respects_max_depth(max_depth, names):
 
 def test_depth_limit_keeps_full_sizes():
     assert render(deep_tree(), 1).splitlines()[1] == "└── l1  3 B"
+
+
+def test_render_json_nests_children_with_byte_sizes():
+    import json
+
+    root = Node("top", 3, is_dir=True, children=[
+        Node("locked", 0, is_dir=True, denied=True),
+        Node("f.txt", 3),
+    ])
+
+    assert json.loads(render_json(root)) == {
+        "name": "top", "size": 3, "is_dir": True, "children": [
+            {"name": "locked", "size": 0, "is_dir": True, "denied": True, "children": []},
+            {"name": "f.txt", "size": 3, "is_dir": False},
+        ],
+    }
+
+
+@pytest.mark.parametrize("max_depth, depth_seen", [(0, 0), (1, 1), (2, 2), (None, 3)])
+def test_render_json_respects_max_depth(max_depth, depth_seen):
+    import json
+
+    node, depth = json.loads(render_json(deep_tree(), max_depth)), 0
+    while node.get("children"):
+        node, depth = node["children"][0], depth + 1
+    assert depth == depth_seen
+    assert json.loads(render_json(deep_tree(), 0))["size"] == 3
+
+
+def test_render_csv_lists_one_row_per_entry():
+    root = Node("top", 3, is_dir=True, children=[
+        Node("a, b", 2, is_dir=True, children=[Node("x.txt", 2)]),
+        Node("locked", 0, is_dir=True, denied=True),
+    ])
+
+    assert render_csv(root).splitlines() == [
+        "path,size,is_dir,denied",
+        "top,3,1,0",
+        '"top/a, b",2,1,0',
+        '"top/a, b/x.txt",2,0,0',
+        "top/locked,0,1,1",
+    ]
+
+
+def test_render_csv_respects_max_depth_and_root_slash():
+    root = Node("/", 3, is_dir=True, children=[deep_tree()])
+    assert [r.split(",")[0] for r in render_csv(root, 2).splitlines()[1:]] == [
+        "/", "/top", "/top/l1",
+    ]

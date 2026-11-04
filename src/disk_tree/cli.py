@@ -4,7 +4,7 @@ import sys
 from typing import TextIO
 
 from disk_tree import __version__
-from disk_tree.render import render
+from disk_tree.render import render, render_csv, render_json
 from disk_tree.scan import prune, scan, sort_by_size
 
 
@@ -25,6 +25,9 @@ def size_arg(text: str) -> int:
         raise argparse.ArgumentTypeError(f"invalid size: {text!r} (try 500, 10K, 1.5M, 2G)")
     number, unit = match.groups()
     return int(float(number) * SIZE_UNITS[(unit or "").upper()])
+
+
+RENDERERS = {"text": render, "json": render_json, "csv": render_csv}
 
 
 class Progress:
@@ -63,6 +66,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="hide entries smaller than SIZE, e.g. 10M; totals still include them",
     )
     parser.add_argument(
+        "-f", "--format", choices=RENDERERS, default="text",
+        help="output as a text tree, JSON or CSV (sizes in bytes) (default: text)",
+    )
+    parser.add_argument(
         "--progress", action="store_true",
         help="show a running file count on stderr while scanning",
     )
@@ -83,7 +90,7 @@ def main(argv: list[str] | None = None) -> int:
     sort_by_size(root)
     if args.min_size:
         prune(root, args.min_size)
-    print(render(root, args.depth))
+    print(RENDERERS[args.format](root, args.depth))
     return 0
 
 

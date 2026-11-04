@@ -117,3 +117,30 @@ def test_invalid_min_size_is_rejected(capsys):
         main(["--min-size", "lots"])
     assert exc.value.code == 2
     assert "invalid size" in capsys.readouterr().err
+
+
+def test_format_json(make_tree, capsys):
+    import json
+
+    root = make_tree({"a.txt": 5})
+    main(["--format", "json", str(root)])
+    assert json.loads(capsys.readouterr().out) == {
+        "name": str(root), "size": 5, "is_dir": True,
+        "children": [{"name": "a.txt", "size": 5, "is_dir": False}],
+    }
+
+
+def test_format_csv_with_min_size(make_tree, capsys):
+    root = make_tree({"big.bin": 100, "small.txt": 1})
+    main(["-f", "csv", "--min-size", "10", str(root)])
+    assert capsys.readouterr().out.splitlines() == [
+        "path,size,is_dir,denied",
+        f"{root},101,1,0",
+        f"{root}/big.bin,100,0,0",
+    ]
+
+
+def test_unknown_format_is_rejected(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["--format", "xml"])
+    assert exc.value.code == 2

@@ -30,6 +30,7 @@ disk-tree                  # current directory, 3 levels deep
 disk-tree /var/log         # a specific folder
 disk-tree --depth 1 ~      # only the top level of your home folder
 disk-tree --min-size 10M ~ # hide entries smaller than 10 MiB
+disk-tree -f json . > sizes.json  # machine-readable output (also: csv)
 disk-tree --progress /     # print a running file count to stderr while scanning
 disk-tree --help           # all options
 ```
@@ -40,6 +41,12 @@ below them. `--depth 0` prints just the total.
 `--min-size` hides files and folders smaller than the given size. It takes plain bytes
 or a 1024-based unit: `500`, `10K`, `1.5M`, `2G` (`MB`/`MiB` spellings work too). Hidden
 entries still count toward their parent's total.
+
+`--format` (`-f`) picks the output: `text` (the tree, default), `json` (nested objects
+with `name`, `size` in bytes, `is_dir`, `denied` when a folder couldn't be read, and
+`children` for folders) or `csv` (columns `path,size,is_dir,denied`, one row per entry,
+parents before children). `--depth` and `--min-size` apply to every format; in JSON, a
+folder below the depth limit has an empty `children` list.
 
 Example output (`disk-tree --depth 2 projects`, on a made-up folder):
 
