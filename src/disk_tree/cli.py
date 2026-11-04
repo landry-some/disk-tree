@@ -1,10 +1,11 @@
 import argparse
+import re
 import sys
 from typing import TextIO
 
 from disk_tree import __version__
 from disk_tree.render import render
-from disk_tree.scan import scan, sort_by_size
+from disk_tree.scan import prune, scan, sort_by_size
 
 
 def non_negative_int(text: str) -> int:
@@ -12,6 +13,18 @@ def non_negative_int(text: str) -> int:
     if value < 0:
         raise argparse.ArgumentTypeError("must be 0 or more")
     return value
+
+
+SIZE_UNITS = {"": 1, "K": 1024, "M": 1024**2, "G": 1024**3, "T": 1024**4, "P": 1024**5}
+
+
+def size_arg(text: str) -> int:
+    """Parse sizes like 500, 10K, 1.5M or 2GiB (1024-based) into bytes."""
+    match = re.fullmatch(r"(\d+(?:\.\d+)?)\s*(?:([KMGTP])i?)?B?", text.strip(), re.IGNORECASE)
+    if not match:
+        raise argparse.ArgumentTypeError(f"invalid size: {text!r} (try 500, 10K, 1.5M, 2G)")
+    number, unit = match.groups()
+    return int(float(number) * SIZE_UNITS[(unit or "").upper()])
 
 
 class Progress:
@@ -46,6 +59,10 @@ def build_parser() -> argparse.ArgumentParser:
         help="levels below PATH to show; sizes always include everything (default: 3)",
     )
     parser.add_argument(
+        "--min-size", type=size_arg, default=0, metavar="SIZE",
+        help="hide entries smaller than SIZE, e.g. 10M; totals still include them",
+    )
+    parser.add_argument(
         "--progress", action="store_true",
         help="show a running file count on stderr while scanning",
     )
@@ -64,6 +81,8 @@ def main(argv: list[str] | None = None) -> int:
     if progress:
         progress.done()
     sort_by_size(root)
+    if args.min_size:
+        prune(root, args.min_size)
     print(render(root, args.depth))
     return 0
 

@@ -5,7 +5,7 @@ Work planned after v0.1. Estimates are rough. Total: about 28.5 hours.
 ## Features
 
 - [ ] JSON and CSV output (`--format json|csv`) for scripting (2h)
-- [ ] `--min-size` to hide entries below a threshold (1.5h)
+- [x] `--min-size` to hide entries below a threshold (1.5h)
 - [ ] Ignore patterns (`--exclude`, plus reading `.gitignore`) (2.5h)
 - [ ] `--follow-symlinks` option with loop detection (1.5h)
 - [ ] Colored output that highlights the largest entries (2h)

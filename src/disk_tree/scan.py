@@ -51,3 +51,10 @@ def sort_by_size(node: Node) -> None:
     node.children.sort(key=lambda c: (-c.size, c.name))
     for child in node.children:
         sort_by_size(child)
+
+
+def prune(node: Node, min_size: int) -> None:
+    """Drop entries smaller than min_size at every level; folder sizes stay unchanged."""
+    node.children = [c for c in node.children if c.size >= min_size]
+    for child in node.children:
+        prune(child, min_size)

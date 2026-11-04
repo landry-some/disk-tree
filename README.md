@@ -29,12 +29,17 @@ pip install -e .
 disk-tree                  # current directory, 3 levels deep
 disk-tree /var/log         # a specific folder
 disk-tree --depth 1 ~      # only the top level of your home folder
+disk-tree --min-size 10M ~ # hide entries smaller than 10 MiB
 disk-tree --progress /     # print a running file count to stderr while scanning
 disk-tree --help           # all options
 ```
 
 `--depth` (`-d`) only limits what is printed: folder sizes always include everything
 below them. `--depth 0` prints just the total.
+
+`--min-size` hides files and folders smaller than the given size. It takes plain bytes
+or a 1024-based unit: `500`, `10K`, `1.5M`, `2G` (`MB`/`MiB` spellings work too). Hidden
+entries still count toward their parent's total.
 
 Example output (`disk-tree --depth 2 projects`, on a made-up folder):
 

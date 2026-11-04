@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from disk_tree.scan import scan, sort_by_size
+from disk_tree.scan import prune, scan, sort_by_size
 
 
 def child(node, name):
@@ -88,3 +88,14 @@ def test_sort_by_size_breaks_ties_by_name(make_tree):
     root = scan(str(make_tree({"c": 7, "a": 7, "b": 7})))
     sort_by_size(root)
     assert [c.name for c in root.children] == ["a", "b", "c"]
+
+
+def test_prune_hides_small_entries_but_keeps_sizes(make_tree):
+    root = scan(str(make_tree({"big/a.bin": 100, "big/b.bin": 5, "tiny.txt": 3})))
+
+    prune(root, 10)
+
+    assert [c.name for c in root.children] == ["big"]
+    assert [c.name for c in child(root, "big").children] == ["a.bin"]
+    assert root.size == 108
+    assert child(root, "big").size == 105

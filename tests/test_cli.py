@@ -69,3 +69,51 @@ def test_progress_redraws_every_n_files():
         progress.tick()
     progress.done()
     assert stream.getvalue() == "\rscanned 2 files\rscanned 4 files\rscanned 5 files\n"
+
+
+@pytest.mark.parametrize(
+    "text, expected",
+    [
+        ("0", 0),
+        ("500", 500),
+        ("10K", 10 * 1024),
+        ("10k", 10 * 1024),
+        ("1.5M", int(1.5 * 1024**2)),
+        ("2G", 2 * 1024**3),
+        ("2GiB", 2 * 1024**3),
+        ("3 MB", 3 * 1024**2),
+        ("1T", 1024**4),
+    ],
+)
+def test_size_arg_parses_units(text, expected):
+    from disk_tree.cli import size_arg
+
+    assert size_arg(text) == expected
+
+
+@pytest.mark.parametrize("text", ["", "abc", "-5", "10X", "1.2.3M", "5iB"])
+def test_size_arg_rejects_garbage(text):
+    import argparse
+
+    from disk_tree.cli import size_arg
+
+    with pytest.raises(argparse.ArgumentTypeError):
+        size_arg(text)
+
+
+def test_min_size_option_hides_small_entries(make_tree, capsys):
+    root = make_tree({"big.bin": 2048, "small.txt": 10})
+
+    main(["--min-size", "1K", str(root)])
+
+    assert capsys.readouterr().out.splitlines() == [
+        f"{root}  2.0 KiB",
+        "└── big.bin  2.0 KiB",
+    ]
+
+
+def test_invalid_min_size_is_rejected(capsys):
+    with pytest.raises(SystemExit) as exc:
+        main(["--min-size", "lots"])
+    assert exc.value.code == 2
+    assert "invalid size" in capsys.readouterr().err
